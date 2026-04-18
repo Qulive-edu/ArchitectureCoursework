@@ -1,0 +1,64 @@
+package config
+
+import (
+	"flag"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/ilyakaznacheev/cleanenv"
+)
+
+type Config struct {
+	Database Database `yaml:"database"`
+	Server   Server   `yaml:"http_server"`
+}
+
+type Database struct {
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"name"`
+
+	MaxPoolSize  int           `yaml:"max_pool_size" env-default:"5"`
+	ConnAttempts int           `yaml:"conn_attempts" env-default:"10"`
+	Timeout      time.Duration `yaml:"timeout" env-default:"1s"`
+}
+
+type Server struct {
+	JwtSecret string        `yaml:"jwt-secret" env-default:"secret"`
+	Timeout   time.Duration `yaml:"timeout" env-default:"5s"`
+	Port      string        `yaml:"port" env-default:"8090"`
+}
+
+var configPath *string
+
+func init() {
+	configPath = flag.String("config_path", "", "Path to config file")
+}
+
+func NewConfig() Config {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+	if *configPath == "" {
+		*configPath = os.Getenv("CONFIG_PATH")
+	}
+	if *configPath == "" {
+		logger.Warn("config path is not specified, using default \"config/config.yml\"")
+		*configPath = "config/config.yml"
+	}
+	if _, err := os.Stat(*configPath); os.IsNotExist(err) {
+		logger.Error("config file does not exist: " + *configPath)
+		panic("config file does not exist: " + *configPath)
+	}
+	cfg := Config{}
+	if err := cleanenv.ReadConfig(*configPath, &cfg); err != nil {
+		logger.Error("cannot read yaml: " + err.Error())
+		panic("cannot read yaml: " + err.Error())
+	}
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		logger.Error("cannot read env: " + err.Error())
+		panic("cannot read env: " + err.Error())
+	}
+	return cfg
+}

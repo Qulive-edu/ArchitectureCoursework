@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-zinc-950 text-white;
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium transition;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded font-medium transition;
+  }
+}

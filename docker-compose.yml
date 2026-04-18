@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:17
+    container_name: postgres
+    restart: on-failure
+    ports:
+      - "5438:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: on-failure
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+
+  back:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: back
+    ports:
+     - "8090:8090"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - CONFIG_PATH=/app/config/config.yml
+
+  front:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: front
+    ports:
+      - "3000:3000" 
+    depends_on:
+      - back

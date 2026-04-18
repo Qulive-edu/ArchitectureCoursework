@@ -1,0 +1,14 @@
+database:
+  host: db
+  port: "5432"
+  user: postgres
+  password: postgres
+  name: postgres
+  max_pool_size: 5
+  conn_attempts: 10
+  timeout: 1s
+
+http_server:
+  jwt-secret: "replace-with-secure-secret"
+  timeout: 5s
+  port: "8090"

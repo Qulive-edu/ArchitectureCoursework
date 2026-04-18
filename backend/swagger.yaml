@@ -1,0 +1,420 @@
+openapi: 3.0.3
+info:
+  title: Sports Places Booking API
+  description: API для бронирования спортивных площадок
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+servers:
+  - url: http://localhost:8090
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: Регистрация и авторизация пользователей
+  - name: Places
+    description: Управление спортивными площадками
+  - name: Slots
+    description: Управление временными слотами
+  - name: Bookings
+    description: Управление бронированиями
+
+components:
+  schemas:
+    Place:
+      type: object
+      required:
+        - id
+        - title
+        - address
+        - floor_type
+        - price_per_hour
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Баскетбольная площадка #1"
+        address:
+          type: string
+          example: "ул. Спортивная, 15"
+        floor_type:
+          type: string
+          example: "паркет"
+        description:
+          type: string
+          example: "Крытая площадка с профессиональным покрытием"
+        image:
+          type: string
+          example: "https://example.com/image.jpg"
+        price_per_hour:
+          type: integer
+          example: 1500
+
+    Slot:
+      type: object
+      required:
+        - id
+        - place_id
+        - start_time
+        - end_time
+        - is_available
+      properties:
+        id:
+          type: integer
+          example: 1
+        place_id:
+          type: integer
+          example: 1
+        start_time:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          example: "2024-01-15T11:00:00Z"
+        is_available:
+          type: boolean
+          example: true
+
+    Booking:
+      type: object
+      required:
+        - user_id
+        - place_id
+        - slot_id
+        - status
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        place_id:
+          type: integer
+          example: 1
+        slot_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [confirmed, cancelled, completed]
+          example: "confirmed"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T09:00:00Z"
+
+    User:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Иван Иванов"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: "Иван Иванов"
+          description: Только для регистрации
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "secret123"
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    BookingRequest:
+      type: object
+      required:
+        - place_id
+        - slot_id
+      properties:
+        place_id:
+          type: integer
+          example: 1
+        slot_id:
+          type: integer
+          example: 1
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Something went wrong"
+        message:
+          type: string
+          example: "Detailed error description"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Регистрация нового пользователя
+      description: Создает нового пользователя и возвращает токен
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Авторизация пользователя
+      description: Вход в систему по email и паролю
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /places:
+    get:
+      tags:
+        - Places
+      summary: Получить список всех площадок
+      description: Возвращает список всех доступных спортивных площадок
+      responses:
+        '200':
+          description: Список площадок
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Place'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /places/{id}:
+    get:
+      tags:
+        - Places
+      summary: Получить информацию о конкретной площадке
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID площадки
+      responses:
+        '200':
+          description: Информация о площадке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+        '404':
+          description: Площадка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /places/{id}/slots:
+    get:
+      tags:
+        - Slots
+      summary: Получить доступные слоты для площадки
+      description: Возвращает список доступных временных слотов для указанной площадки
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID площадки
+      responses:
+        '200':
+          description: Список слотов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Slot'
+        '404':
+          description: Площадка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bookings:
+    post:
+      tags:
+        - Bookings
+      summary: Создать новое бронирование
+      description: Создает бронирование для текущего пользователя. Требуется авторизация.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      responses:
+        '200':
+          description: Бронирование успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Пользователь не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера или слот недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bookings/my:
+    get:
+      tags:
+        - Bookings
+      summary: Получить мои бронирования
+      description: Возвращает список всех бронирований текущего пользователя. Требуется авторизация.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список бронирований
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+        '401':
+          description: Пользователь не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
