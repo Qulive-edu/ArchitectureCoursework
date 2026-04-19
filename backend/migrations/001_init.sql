@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS places (
     id SERIAL PRIMARY KEY,
     title VARCHAR(127) NOT NULL,
     address VARCHAR(255) NOT NULL,
-    floor_type VARCHAR(255) NOT NULL,
     description TEXT,
     image VARCHAR(255),
     price_per_hour INT NOT NULL

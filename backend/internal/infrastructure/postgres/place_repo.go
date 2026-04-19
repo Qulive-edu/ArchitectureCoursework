@@ -18,7 +18,7 @@ func (r *PlaceRepo) ListSlots(ctx context.Context, placeID int) ([]*entity.Slot,
 func NewPlaceRepo(db *Postgres) *PlaceRepo { return &PlaceRepo{db: db} }
 
 func (r *PlaceRepo) List(ctx context.Context) ([]*entity.Place, error) {
-	rows, err := r.db.Pool.Query(ctx, "SELECT id, title, address, floor_type, description, image, price_per_hour FROM places")
+	rows, err := r.db.Pool.Query(ctx, "SELECT id, title, address, description, image, price_per_hour FROM places")
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func (r *PlaceRepo) List(ctx context.Context) ([]*entity.Place, error) {
 	var res []*entity.Place
 	for rows.Next() {
 		p := &entity.Place{}
-		if err := rows.Scan(&p.ID, &p.Title, &p.Address, &p.FloorType, &p.Description, &p.Image, &p.PricePerHour); err != nil {
+		if err := rows.Scan(&p.ID, &p.Title, &p.Address, &p.Description, &p.Image, &p.PricePerHour); err != nil {
 			return nil, err
 		}
 		res = append(res, p)
@@ -35,9 +35,9 @@ func (r *PlaceRepo) List(ctx context.Context) ([]*entity.Place, error) {
 }
 
 func (r *PlaceRepo) GetByID(ctx context.Context, id int) (*entity.Place, error) {
-	row := r.db.Pool.QueryRow(ctx, "SELECT id, title, address, floor_type, description, image, price_per_hour FROM places WHERE id=$1", id)
+	row := r.db.Pool.QueryRow(ctx, "SELECT id, title, address, description, image, price_per_hour FROM places WHERE id=$1", id)
 	p := &entity.Place{}
-	if err := row.Scan(&p.ID, &p.Title, &p.Address, &p.FloorType, &p.Description, &p.Image, &p.PricePerHour); err != nil {
+	if err := row.Scan(&p.ID, &p.Title, &p.Address, &p.Description, &p.Image, &p.PricePerHour); err != nil {
 		return nil, fmt.Errorf("not found")
 	}
 	return p, nil

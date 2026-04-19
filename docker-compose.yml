@@ -12,6 +12,14 @@ services:
     volumes:
       - ./db_data:/var/lib/postgresql/data
       - ./scripts:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -21,19 +29,25 @@ services:
       - "6379:6379"
     volumes:
       - ./redis_data:/data
+    networks:
+      - app-network
 
   back:
     build:
       context: backend
       dockerfile: Dockerfile
-    container_name: back
-    ports:
-     - "8090:8090"
+    #container_name: back
+    #ports:
+    #  - "8090:8090"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - CONFIG_PATH=/app/config/config.yml
+    networks:
+      - app-network
 
   front:
     build:
@@ -41,6 +55,13 @@ services:
       dockerfile: Dockerfile
     container_name: front
     ports:
-      - "3000:3000" 
+      - "3000:3000"
     depends_on:
-      - back
+      back:
+        condition: service_started
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
