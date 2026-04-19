@@ -79,49 +79,49 @@ jobs:
           echo "   • Seeding initial data..."
           echo "Migrations completed successfully"
 
-deploy:
-    needs: [build, migrate]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    environment: ${{ github.event.inputs.environment }}
-    permissions:
-      contents: read
-      deployments: write
-    outputs:
-      backend_image: ${{ steps.info.outputs.backend }}
-      frontend_image: ${{ steps.info.outputs.frontend }}
-    steps:
-      - name: Extract image info
-        id: info
-        run: |
-          echo "backend=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "frontend=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+  deploy:
+      needs: [build, migrate]
+      runs-on: ubuntu-latest
+      if: github.event_name == 'workflow_dispatch'
+      environment: ${{ github.event.inputs.environment }}
+      permissions:
+        contents: read
+        deployments: write
+      outputs:
+        backend_image: ${{ steps.info.outputs.backend }}
+        frontend_image: ${{ steps.info.outputs.frontend }}
+      steps:
+        - name: Extract image info
+          id: info
+          run: |
+            echo "backend=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "frontend=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Wait for propagation (simulated)
-        run: |
-          echo "Waiting for services to start..."
-          sleep 3
-          echo "All services healthy"
+        - name: Wait for propagation (simulated)
+          run: |
+            echo "Waiting for services to start..."
+            sleep 3
+            echo "All services healthy"
 
-      - name: Create GitHub Deployment
-        uses: bobheadxi/deployments@v1
-        id: deployment
-        with:
-          step: start
-          token: ${{ secrets.GITHUB_TOKEN }}
-          env: ${{ github.event.inputs.environment }}
-          ref: ${{ github.sha }}          # 👈 SHA вместо refs/heads/*
-          desc: "Deploying ${{ github.sha }} to ${{ github.event.inputs.environment }}"
-          no_override: false
-          transient: false
+        - name: Create GitHub Deployment
+          uses: bobheadxi/deployments@v1
+          id: deployment
+          with:
+            step: start
+            token: ${{ secrets.GITHUB_TOKEN }}
+            env: ${{ github.event.inputs.environment }}
+            ref: ${{ github.sha }}          # 👈 SHA вместо refs/heads/*
+            desc: "Deploying ${{ github.sha }} to ${{ github.event.inputs.environment }}"
+            no_override: false
+            transient: false
 
-      - name: Report deployment status
-        uses: bobheadxi/deployments@v1
-        if: always()
-        with:
-          step: finish
-          token: ${{ secrets.GITHUB_TOKEN }}
-          env: ${{ github.event.inputs.environment }}
-          status: ${{ job.status }}
-          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-          desc: "Deployment ${{ job.status }} for ${{ github.sha }}"
+        - name: Report deployment status
+          uses: bobheadxi/deployments@v1
+          if: always()
+          with:
+            step: finish
+            token: ${{ secrets.GITHUB_TOKEN }}
+            env: ${{ github.event.inputs.environment }}
+            status: ${{ job.status }}
+            deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+            desc: "Deployment ${{ job.status }} for ${{ github.sha }}"
