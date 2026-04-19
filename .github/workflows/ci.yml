@@ -1,56 +1,101 @@
-name: Build & Push Docker Images
+name: SportRent CI/CD (Practice)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  # 🔨 Сборка и пуш образов (запускается при пуше/PR/ручном запуске)
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     strategy:
       matrix:
         service: [backend, frontend]
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
           tags: |
             type=sha,prefix=,format=long
             type=ref,event=branch
             latest
 
-      - name: Build and push Docker image
+      - name: Build & Push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.service }}
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+  migrate:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Simulate database migration
+        run: |
+          echo "Running migrations for ${{ github.event.inputs.environment }}..."
+          echo "   • Connecting to database..."
+          echo "   • Applying pending migrations..."
+          echo "   • Seeding initial data..."
+          echo "Migrations completed successfully"
+
+  deploy:
+    needs: [build, migrate]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    outputs:
+      backend_image: ${{ steps.info.outputs.backend }}
+      frontend_image: ${{ steps.info.outputs.frontend }}
+    steps:
+      - name: Extract image info
+        id: info
+        run: |
+          echo "backend=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "frontend=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Wait for propagation (simulated)
+        run: |
+          echo "Waiting for services to start..."
+          sleep 3
+          echo "All services healthy"
