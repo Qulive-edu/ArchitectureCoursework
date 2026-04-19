@@ -2,9 +2,9 @@ name: Build & Push Docker Images
 
 on:
   push:
-    branches: [ master, staging ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -43,7 +43,6 @@ jobs:
           tags: |
             type=sha,prefix=,format=long
             type=ref,event=branch
-            type=ref,event=pr
             latest
 
       - name: Build and push Docker image
@@ -55,40 +54,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            COMMIT_SHA=${{ github.sha }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-
-  deploy-staging:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'  # Только для master
-    environment: staging  # 👈 GitHub Environment с защитой
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Deploy to staging via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/sportrent
-            git pull origin master
-            
-            # Загружаем .env
-            echo "${{ secrets.STAGING_ENV }}" > .env.staging
-            
-            # Деплоим с фиксированными тегами
-            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --pull always
-            
-            # Логируем релиз
-            echo "$(date): Deployed $(ghcr.io/your/repo-backend:${{ github.sha }}) to staging" >> deploy.log
-
-      - name: Health check
-        run: |
-          sleep 10
-          curl -f http://${{ secrets.STAGING_HOST }}/api/places || exit 1
