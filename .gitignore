@@ -1,4 +1,6 @@
 db_data
+redis_data
 .idea
 node_modules
 context
+.env.staging

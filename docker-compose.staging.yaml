@@ -1,0 +1,58 @@
+services:
+  back:
+    image: ghcr.io/your/repo-backend:main  # 👈 Фиксированный тег!
+    restart: unless-stopped
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD_STAGING}  # 👈 Из env файла
+      - DB_NAME=postgres
+      - JWT_SECRET=${JWT_SECRET_STAGING}
+      - SERVER_PORT=8090
+    networks: [app-network]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  front:
+    image: ghcr.io/your/repo-frontend:main
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE=/api
+    ports: ["3000:3000"]
+    networks: [app-network]
+    depends_on: [back]
+
+    redis:
+      image: redis:7-alpine
+      container_name: redis
+      restart: on-failure
+      ports:
+        - "6379:6379"
+      volumes:
+        - ./redis_data:/data
+      networks:
+        - app-network
+    
+    db:
+      image: postgres:17
+      container_name: postgres
+      restart: on-failure
+      ports:
+        - "5438:5432"
+      environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_DB=postgres
+      volumes:
+        - ./db_data:/var/lib/postgresql/data
+        - ./scripts:/docker-entrypoint-initdb.d
+      networks:
+        - app-network
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+        start_period: 10s

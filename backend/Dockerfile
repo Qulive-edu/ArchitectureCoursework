@@ -11,4 +11,12 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/main /app/main
 COPY config/config.yml /app/config/config.yml
 WORKDIR /app
+
+ARG COMMIT_SHA=unknown
+ARG BUILD_DATE=unknown
+LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
+      org.opencontainers.image.revision=${COMMIT_SHA} \
+      org.opencontainers.image.created=${BUILD_DATE}
+
+WORKDIR /app
 CMD ["./main"]
