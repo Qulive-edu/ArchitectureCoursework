@@ -45,7 +45,14 @@ services:
       redis:
         condition: service_started
     environment:
-      - CONFIG_PATH=/app/config/config.yml
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - SERVER_PORT=${SERVER_PORT}
+      - APP_ENV=${APP_ENV}
     networks:
       - app-network
 
