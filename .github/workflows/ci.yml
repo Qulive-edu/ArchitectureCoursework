@@ -99,3 +99,24 @@ jobs:
           echo "Waiting for services to start..."
           sleep 3
           echo "All services healthy"
+
+      - name: Create GitHub Deployment
+        uses: bobheadxi/deployments@v1
+        id: deployment
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: ${{ github.event.inputs.environment }}
+          ref: ${{ github.ref }}
+          desc: "Deploying ${{ github.sha }} to ${{ github.event.inputs.environment }}"
+
+      - name: Report deployment status
+        uses: bobheadxi/deployments@v1
+        if: always()
+        with:
+          step: finish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: ${{ github.event.inputs.environment }}
+          status: ${{ job.status }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          desc: "Deployment ${{ job.status }} for ${{ github.sha }}"
