@@ -15,21 +15,20 @@ type Config struct {
 }
 
 type Database struct {
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Name     string `yaml:"name"`
-
-	MaxPoolSize  int           `yaml:"max_pool_size" env-default:"5"`
-	ConnAttempts int           `yaml:"conn_attempts" env-default:"10"`
-	Timeout      time.Duration `yaml:"timeout" env-default:"1s"`
+	Host         string        `yaml:"host" env:"DB_HOST"`
+	Port         string        `yaml:"port" env:"DB_PORT"`
+	User         string        `yaml:"user" env:"DB_USER"`
+	Password     string        `yaml:"password" env:"DB_PASSWORD"`
+	Name         string        `yaml:"name" env:"DB_NAME"`
+	MaxPoolSize  int           `yaml:"max_pool_size" env:"DB_MAX_POOL_SIZE" env-default:"5"`
+	ConnAttempts int           `yaml:"conn_attempts" env:"DB_CONN_ATTEMPTS" env-default:"10"`
+	Timeout      time.Duration `yaml:"timeout" env:"DB_TIMEOUT" env-default:"1s"`
 }
 
 type Server struct {
-	JwtSecret string        `yaml:"jwt-secret" env-default:"secret"`
-	Timeout   time.Duration `yaml:"timeout" env-default:"5s"`
-	Port      string        `yaml:"port" env-default:"8090"`
+	JwtSecret string        `yaml:"jwt-secret" env:"JWT_SECRET"`
+	Timeout   time.Duration `yaml:"timeout" env:"SERVER_TIMEOUT" env-default:"5s"`
+	Port      string        `yaml:"port" env:"SERVER_PORT" env-default:"8090"`
 }
 
 var configPath *string
