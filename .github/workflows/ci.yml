@@ -79,11 +79,14 @@ jobs:
           echo "   • Seeding initial data..."
           echo "Migrations completed successfully"
 
-  deploy:
+deploy:
     needs: [build, migrate]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     environment: ${{ github.event.inputs.environment }}
+    permissions:
+      contents: read
+      deployments: write
     outputs:
       backend_image: ${{ steps.info.outputs.backend }}
       frontend_image: ${{ steps.info.outputs.frontend }}
@@ -107,8 +110,10 @@ jobs:
           step: start
           token: ${{ secrets.GITHUB_TOKEN }}
           env: ${{ github.event.inputs.environment }}
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}          # 👈 SHA вместо refs/heads/*
           desc: "Deploying ${{ github.sha }} to ${{ github.event.inputs.environment }}"
+          no_override: false
+          transient: false
 
       - name: Report deployment status
         uses: bobheadxi/deployments@v1
