@@ -7,15 +7,21 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
 
 	"backend/config"
 	"backend/internal/controller/handlers"
+	"backend/internal/controller/middleware"
+
+	redispkg "github.com/redis/go-redis/v9"
 )
 
-func NewRouter(cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService) *chi.Mux {
+func NewRouter(cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService, rdb *redispkg.Client) *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(chimiddleware.RequestID)             // Генерирует request_id
+	r.Use(middleware.StructuredLogger(logger)) // 👈 Наш новый логгер
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
@@ -46,7 +52,7 @@ func NewRouter(cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceSer
 	// Регистрация обработчиков
 	handlers.NewPlaceHandler(r, placeSvc, logger)
 	handlers.NewSlotHandler(r, placeSvc, logger)
-	handlers.NewAuthHandler(r, userSvc, logger, jwt)
+	handlers.NewAuthHandler(r, userSvc, logger, jwt, rdb)
 	handlers.NewBookingHandler(r, bookingSvc, logger, jwt)
 
 	return r

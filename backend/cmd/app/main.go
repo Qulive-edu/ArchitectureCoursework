@@ -3,6 +3,7 @@ package main
 import (
 	"backend/config"
 	"backend/internal/app"
+	"backend/internal/infrastructure/redis" // 👈 твой пакет подключения
 	"context"
 	"flag"
 	"log/slog"
@@ -13,11 +14,15 @@ func main() {
 	flag.Parse()
 	cfg := config.NewConfig()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
-	app.Run(context.Background(), cfg, logger)
-	logger.Info("app starting",
-		"version", os.Getenv("APP_VERSION"),
-		"commit", os.Getenv("COMMIT_SHA"),
-		"env", os.Getenv("APP_ENV"),
-	)
-	app.Run(context.Background(), cfg, logger)
+
+	// 👇 1. Инициализируем Redis
+	rdb, err := redis.New(cfg.Redis)
+	if err != nil {
+		logger.Error("redis connect: " + err.Error())
+		panic(err) // или os.Exit(1), как у тебя с БД
+	}
+	defer rdb.Close()
+
+	// 👇 2. Передаём rdb в app.Run
+	app.Run(context.Background(), cfg, logger, rdb)
 }

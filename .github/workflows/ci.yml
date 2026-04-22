@@ -1,4 +1,4 @@
-name: SportRent CI/CD (Practice)
+name: ParkingRent CI/CD (Practice)
 
 on:
   push:
@@ -19,7 +19,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 🔨 Сборка и пуш образов (запускается при пуше/PR/ручном запуске)
   build:
     runs-on: ubuntu-latest
     permissions:

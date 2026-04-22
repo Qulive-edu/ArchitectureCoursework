@@ -1,0 +1,64 @@
+version: '3.8'  # 👈 Обязательно для Swarm
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  back:
+    image: ghcr.io/qulive-edu/parkrent-backend:latest  # 👈 Только image, без build!
+    environment:
+      - DB_HOST=db
+      - DB_PASSWORD=postgres
+      - JWT_SECRET=change-me
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
+    networks:
+      - app-network
+    depends_on:
+      - db    # 👈 Простой список
+      - redis
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+
+  front:
+    image: ghcr.io/qulive-edu/parkrent-frontend:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    depends_on:
+      - back  # 👈 Простой список
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+networks:
+  app-network:
+    driver: overlay  # 👈 Для Swarm нужен overlay, не bridge
+
+volumes:
+  db_data:
+  redis_data:

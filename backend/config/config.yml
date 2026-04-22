@@ -12,3 +12,8 @@ http_server:
   jwt-secret: "replace-with-secure-secret"
   timeout: 5s
   port: "8090"
+
+redis:
+  addr: redis:6379
+  password: ""
+  db: 0
