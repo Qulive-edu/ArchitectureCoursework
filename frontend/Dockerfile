@@ -18,7 +18,7 @@ EXPOSE 3000
 
 ARG COMMIT_SHA=unknown
 ARG BUILD_DATE=unknown
-LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
+LABEL org.opencontainers.image.source="https://github.com/Qulive-edu/ArchitectureCoursework" \
       org.opencontainers.image.revision=${COMMIT_SHA} \
       org.opencontainers.image.created=${BUILD_DATE}
 

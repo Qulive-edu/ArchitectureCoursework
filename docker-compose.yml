@@ -45,6 +45,7 @@ services:
       redis:
         condition: service_started
     environment:
+      - LOG_LEVEL=debug
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_USER=${DB_USER}
@@ -53,8 +54,13 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SERVER_PORT=${SERVER_PORT}
       - APP_ENV=${APP_ENV}
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
     networks:
       - app-network
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
 
   front:
     build:

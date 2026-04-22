@@ -11,7 +11,14 @@ import (
 
 type Config struct {
 	Database Database `yaml:"database"`
+	Redis    Redis    `yaml:"redis"`
 	Server   Server   `yaml:"http_server"`
+}
+
+type Redis struct {
+	Addr     string `yaml:"addr" env:"REDIS_ADDR" env-default:"redis:6379"`
+	Password string `yaml:"password" env:"REDIS_PASSWORD"`
+	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
 }
 
 type Database struct {

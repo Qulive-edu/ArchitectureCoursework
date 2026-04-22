@@ -22,12 +22,16 @@ func NewPlaceHandler(r *chi.Mux, svc usecase.PlaceService, log *slog.Logger) *Pl
 }
 
 func (h *PlaceHandler) ListPlaces(w http.ResponseWriter, r *http.Request) {
+	h.log.Debug("listing places", "remote_addr", r.RemoteAddr)
+
 	places, err := h.svc.ListPlaces(r.Context())
 	if err != nil {
 		h.log.Error("list places: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	h.log.Debug("places listed", "count", len(places))
 	render.JSON(w, r, places)
 }
 
