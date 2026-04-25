@@ -7,7 +7,7 @@ VALUES
 
 INSERT INTO time_slots (place_id, start_time, end_time, is_available)
 VALUES
-(1, '2026-01-01 10:00', '2026-01-01 12:00', true),
-(1, '2026-01-02 14:00', '2026-01-02 15:00', true),
-(2, '2026-01-03 16:00', '2026-01-03 18:00', true),
-(3, '2026-02-01 09:00', '2026-02-01 11:00', true);
+(1, NOW() + INTERVAL '1 hour', NOW() + INTERVAL '2 hours', true),
+(1, NOW() + INTERVAL '3 hours', NOW() + INTERVAL '4 hours', true),
+(2, NOW() + INTERVAL '1 day', NOW() + INTERVAL '1 day 2 hours', true),
+(3, NOW() + INTERVAL '2 days', NOW() + INTERVAL '2 days 2 hours', true);
