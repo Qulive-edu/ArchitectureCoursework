@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"time"
 
-	chimiddleware "github.com/go-chi/chi/v5/middleware" // 👈 Алиас
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 func StructuredLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor) // 👈 Алиас
+			ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			start := time.Now()
 
-			reqID := chimiddleware.GetReqID(r.Context()) // 👈 Алиас
+			reqID := chimiddleware.GetReqID(r.Context())
 
 			defer func() {
 				logger.Info("http_request",

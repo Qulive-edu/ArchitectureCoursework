@@ -16,7 +16,7 @@ type AuthHandler struct {
 	svc usecase.UserService
 	log *slog.Logger
 	jwt *jwtauth.JWTAuth
-	rdb *redis.Client // 👈 Добавлено поле для Redis
+	rdb *redis.Client
 }
 
 func NewAuthHandler(r *chi.Mux, svc usecase.UserService, log *slog.Logger, jwt *jwtauth.JWTAuth, rdb *redis.Client) *AuthHandler {
@@ -24,7 +24,7 @@ func NewAuthHandler(r *chi.Mux, svc usecase.UserService, log *slog.Logger, jwt *
 
 	r.Post("/auth/register", h.Register)
 	r.Post("/auth/login", h.Login)
-	r.Post("/auth/logout", h.Logout) // 👈 Регистрация маршрута логаута
+	r.Post("/auth/logout", h.Logout)
 	return h
 }
 
@@ -69,7 +69,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, map[string]interface{}{"user": user, "token": token})
 }
 
-// 👇 НОВЫЙ МЕТОД: ЛОГАУТ
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	// 1. Берём токен из заголовка
 	tokenStr := jwtauth.TokenFromHeader(r)

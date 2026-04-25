@@ -20,24 +20,22 @@ const (
 func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 1. Извлекаем токен (заголовок или query-параметр)
 			tokenStr := jwtauth.TokenFromHeader(r)
 			if tokenStr == "" {
 				tokenStr = jwtauth.TokenFromQuery(r)
 			}
+
 			if tokenStr == "" {
 				http.Error(w, `{"error": "missing token"}`, http.StatusUnauthorized)
 				return
 			}
 
-			// 2. Проверка блеклиста в Redis
 			if banned, err := rdb.Get(r.Context(), "blacklist:"+tokenStr).Result(); err == nil && banned == "1" {
 				http.Error(w, `{"error": "token revoked"}`, http.StatusUnauthorized)
 				return
 			}
 
-			// 3. 👇 ДЕКОДИРУЕМ ТОКЕН (возвращает 2 значения: token, error)
-			token, err := jwtAuth.Decode(tokenStr) // ✅ Только 2 переменные
+			token, err := jwtAuth.Decode(tokenStr)
 			if err != nil {
 				http.Error(w, `{"error": "invalid token: `+err.Error()+`"}`, http.StatusUnauthorized)
 				return
@@ -47,7 +45,6 @@ func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Han
 				return
 			}
 
-			// 4. 👇 ИЗВЛЕКАЕМ CLAIMS ИЗ ТОКЕНА
 			// Приводим к конкретному типу для работы с методами
 			jwtToken, ok := token.(jwt.Token)
 			if !ok {
@@ -55,14 +52,13 @@ func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Han
 				return
 			}
 
-			// Извлекаем user_id (стандартный метод для jwx v2)
+			// Извлекаем user_id
 			userIDRaw, ok := jwtToken.Get("user_id")
 			if !ok {
 				http.Error(w, `{"error": "invalid token claims: missing user_id"}`, http.StatusUnauthorized)
 				return
 			}
 
-			// Конвертируем в int (JWT хранит числа как float64)
 			var userID int
 			switch v := userIDRaw.(type) {
 			case float64:
