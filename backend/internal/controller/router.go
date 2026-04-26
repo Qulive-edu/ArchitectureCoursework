@@ -2,6 +2,7 @@ package controller
 
 import (
 	"backend/internal/usecase"
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,10 +19,11 @@ import (
 	redispkg "github.com/redis/go-redis/v9"
 )
 
-func NewRouter(cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService, rdb *redispkg.Client) *chi.Mux {
+func NewRouter(ctx context.Context, cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService, rdb *redispkg.Client) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)             // Генерирует request_id
 	r.Use(middleware.StructuredLogger(logger)) // 👈 Наш новый логгер
+	r.Use(middleware.GracefulShutdownMiddleware(ctx, logger))
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{

@@ -70,13 +70,28 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     environment: ${{ github.event.inputs.environment }}
     steps:
-      - name: Simulate database migration
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run migrations
         run: |
-          echo "Running migrations for ${{ github.event.inputs.environment }}..."
-          echo "   • Connecting to database..."
-          echo "   • Applying pending migrations..."
-          echo "   • Seeding initial data..."
-          echo "Migrations completed successfully"
+          docker run --rm \
+            --network ${{ github.event.inputs.environment == 'production' && 'prod-network' || 'staging-network' }} \
+            -e DB_HOST=${{ vars.DB_HOST }} \
+            -e DB_PORT=${{ vars.DB_PORT }} \
+            -e DB_USER=${{ vars.DB_USER }} \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DB_NAME=${{ vars.DB_NAME }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.sha }} \
+            ./main -mode=migrate -config=/app/config/config.yml
+          
+      - name: Verify migration success
+        run: |
+          echo "Migrations completed for ${{ github.event.inputs.environment }}"
 
   deploy:
       needs: [build, migrate]
