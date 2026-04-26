@@ -87,7 +87,7 @@ func runMigrations(cfg config.Config, logger *slog.Logger, up bool, steps int) {
 	)
 
 	m, err := migrate.New(
-		"file://migrations",
+		"file:///app/migrations",
 		dsn,
 	)
 	if err != nil {
