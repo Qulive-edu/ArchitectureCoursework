@@ -69,6 +69,23 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     environment: ${{ github.event.inputs.environment }}
+    
+    # 👇 Поднимаем временную БД для этого шага
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -77,21 +94,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Run migrations
         run: |
           docker run --rm \
-            --network ${{ github.event.inputs.environment == 'production' && 'prod-network' || 'staging-network' }} \
-            -e DB_HOST=${{ vars.DB_HOST }} \
-            -e DB_PORT=${{ vars.DB_PORT }} \
-            -e DB_USER=${{ vars.DB_USER }} \
-            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e DB_NAME=${{ vars.DB_NAME }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.sha }} \
-            ./main -mode=migrate -config=/app/config/config.yml
-          
-      - name: Verify migration success
-        run: |
-          echo "Migrations completed for ${{ github.event.inputs.environment }}"
+            --network host \
+            -e DB_HOST=localhost \
+            -e DB_PORT=5432 \
+            -e DB_USER=postgres \
+            -e DB_PASSWORD=postgres \
+            -e DB_NAME=postgres \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/backend:${{ github.sha }} \
+            ./main -mode=migrate
 
   deploy:
       needs: [build, migrate]
@@ -126,8 +142,6 @@ jobs:
             env: ${{ github.event.inputs.environment }}
             ref: ${{ github.sha }}          # 👈 SHA вместо refs/heads/*
             desc: "Deploying ${{ github.sha }} to ${{ github.event.inputs.environment }}"
-            no_override: false
-            transient: false
 
         - name: Report deployment status
           uses: bobheadxi/deployments@v1
