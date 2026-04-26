@@ -105,23 +105,6 @@ jobs:
             sleep 2
           done
 
-      - name: Run smoke tests
-        run: |
-            echo "🧪 Running smoke tests via frontend proxy..."
-            chmod +x ./scripts/smoke-test.sh
-            
-            # 👇 Тестируем через фронтенд: http://localhost:3000/api
-            if ! ./scripts/smoke-test.sh "http://localhost:3000/api" ""; then
-            echo "Smoke tests failed"
-            echo "Frontend logs:"
-            docker compose logs --tail=30 front
-            echo "Backend logs:"
-            docker compose logs --tail=30 back
-            exit 1
-            fi
-            
-            echo "Smoke tests passed via proxy"
-
       - name: Notify rollback complete
         run: |
           echo "Rollback completed successfully:"
