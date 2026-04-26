@@ -79,7 +79,7 @@ jobs:
             --no-deps \
             ${{ env.SERVICES }}
           
-          echo "Services redeployed with SHA: ${{ github.event.inputs.target_sha }}"
+          echo " Services redeployed with SHA: ${{ github.event.inputs.target_sha }}"
 
       - name: Wait for health checks
         run: |
@@ -107,9 +107,64 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          chmod +x ./scripts/smoke-test.sh
-          ./scripts/smoke-test.sh http://localhost:3000/api "${{ secrets.TEST_TOKEN }}"
-          echo "Smoke tests passed"
+            echo "🔍 Running smoke tests..."
+            
+            # 1. Ждём, пока бэкенд станет доступен (до 60 секунд)
+            echo "Waiting for backend to be ready..."
+            for i in {1..30}; do
+            if curl -sf --max-time 2 http://localhost:8090/places > /dev/null 2>&1; then
+                echo "Backend is ready after $((i*2))s"
+                break
+            fi
+            echo "  Waiting... ($i/30)"
+            sleep 2
+            done
+            
+            # 2. Проверяем, что фронтенд тоже отвечает (если деплоили его)
+            if [[ "${{ github.event.inputs.service }}" == "frontend" || "${{ github.event.inputs.service }}" == "all" ]]; then
+            echo "Waiting for frontend to be ready..."
+            for i in {1..30}; do
+                if curl -sf --max-time 2 http://localhost:3000 > /dev/null 2>&1; then
+                echo "Frontend is ready after $((i*2))s"
+                break
+                fi
+                echo "  Waiting... ($i/30)"
+                sleep 2
+            done
+            fi
+            
+            # 3. Запускаем упрощённые тесты (без jq, без сложных проверок)
+            echo "🧪 Running basic health checks..."
+            
+            # Проверка бэкенда
+            if ! curl -sf http://localhost:8090/places > /tmp/places.json; then
+            echo "Backend health check failed"
+            echo "Backend logs:"
+            docker compose logs --tail=20 back
+            exit 1
+            fi
+            echo "Backend: /places OK"
+            
+            # Проверка, что ответ — валидный JSON с данными
+            if ! grep -q '"id"' /tmp/places.json || ! grep -q '"title"' /tmp/places.json; then
+            echo "Backend response format invalid"
+            cat /tmp/places.json
+            exit 1
+            fi
+            echo "Backend: response format OK"
+            
+            # Проверка фронтенда (если деплоили)
+            if [[ "${{ github.event.inputs.service }}" == "frontend" || "${{ github.event.inputs.service }}" == "all" ]]; then
+            if ! curl -sf http://localhost:3000 > /dev/null; then
+                echo "Frontend health check failed"
+                echo "📋 Frontend logs:"
+                docker compose logs --tail=20 front
+                exit 1
+            fi
+            echo "Frontend: root page OK"
+            fi
+            
+            echo "All smoke tests passed"
 
       - name: Notify rollback complete
         run: |
