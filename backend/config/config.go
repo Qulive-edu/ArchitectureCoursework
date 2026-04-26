@@ -68,3 +68,21 @@ func NewConfig() Config {
 	}
 	return cfg
 }
+
+func NewConfigWithFile(path string) Config {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		logger.Error("config file does not exist: " + path)
+		panic("config file does not exist: " + path)
+	}
+	cfg := Config{}
+	if err := cleanenv.ReadConfig(path, &cfg); err != nil {
+		logger.Error("cannot read yaml: " + err.Error())
+		panic("cannot read yaml: " + err.Error())
+	}
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		logger.Error("cannot read env: " + err.Error())
+		panic("cannot read env: " + err.Error())
+	}
+	return cfg
+}

@@ -3,7 +3,6 @@ package app
 import (
 	"backend/config"
 	"backend/internal/controller"
-	"backend/internal/controller/middleware"
 	"backend/internal/infrastructure/postgres"
 	"backend/internal/usecase"
 	"context"
@@ -35,8 +34,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, rdb *redis
 	placeService := usecase.NewPlaceService(placeRepo, slotRepo)
 	userService := usecase.NewUserService(userRepo)
 
-	router := controller.NewRouter(cfg.Server, logger, placeService, bookingService, userService, rdb)
-	router.Use(middleware.GracefulShutdownMiddleware(ctx, logger))
+	router := controller.NewRouter(ctx, cfg.Server, logger, placeService, bookingService, userService, rdb)
 
 	srv := controller.NewServer(cfg.Server, router)
 	logger.Info("starting server on port " + cfg.Server.Port)
