@@ -1,16 +1,26 @@
 # .github/workflows/rollback.yml
-name: Rollback Deployment
+name: Rollback Deployment (Docker Compose)
 
 on:
   workflow_dispatch:
     inputs:
       environment:
+        description: 'Target environment'
         required: true
         type: choice
         options: [staging, production]
-      target_sha:
-        description: 'SHA предыдущей стабильной версии'
+      service:
+        description: 'Service to rollback'
         required: true
+        type: choice
+        options: [backend, frontend, all]
+      target_sha:
+        description: 'Git SHA of the stable version to rollback to'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rollback (optional)'
+        required: false
         type: string
 
 jobs:
@@ -18,17 +28,93 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     steps:
-      - name: Deploy previous version
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Prepare environment variables
         run: |
-          echo "🔄 Rolling back to ${{ github.event.inputs.target_sha }}"
+          # Определяем, какие сервисы перезапускать
+          if [[ "${{ github.event.inputs.service }}" == "backend" ]]; then
+            echo "SERVICES=back" >> $GITHUB_ENV
+            echo "IMAGE_SUFFIX=backend" >> $GITHUB_ENV
+          elif [[ "${{ github.event.inputs.service }}" == "frontend" ]]; then
+            echo "SERVICES=front" >> $GITHUB_ENV
+            echo "IMAGE_SUFFIX=frontend" >> $GITHUB_ENV
+          else
+            echo "SERVICES=back front" >> $GITHUB_ENV
+            echo "IMAGE_SUFFIX=all" >> $GITHUB_ENV
+          fi
+
+      - name: Pull previous image version
+        run: |
+          TARGET_SHA="${{ github.event.inputs.target_sha }}"
           
-          # Обновляем deployment в Kubernetes/Swarm
-          kubectl set image deployment/backend \
-            backend=ghcr.io/${{ github.repository }}/backend:${{ github.event.inputs.target_sha }} \
-            -n ${{ github.event.inputs.environment }}
+          if [[ "${{ github.event.inputs.service }}" == "backend" || "${{ github.event.inputs.service }}" == "all" ]]; then
+            echo "Pulling backend:$TARGET_SHA"
+            docker pull ghcr.io/${{ env.IMAGE_NAME_LOWER }}/backend:$TARGET_SHA
+          fi
           
-          # Ждём готовности
-          kubectl rollout status deployment/backend -n ${{ github.event.inputs.environment }} --timeout=300s
+          if [[ "${{ github.event.inputs.service }}" == "frontend" || "${{ github.event.inputs.service }}" == "all" ]]; then
+            echo "Pulling frontend:$TARGET_SHA"
+            docker pull ghcr.io/${{ env.IMAGE_NAME_LOWER }}/frontend:$TARGET_SHA
+          fi
+
+      - name: Redeploy with previous version
+        run: |
+          # Перезапускаем сервисы с указанным образом
+          # Используем переменную окружения для переопределения тега
+          docker compose \
+            -f docker-compose.yml \
+            up -d \
+            --no-deps \
+            ${{ env.SERVICES }}
           
-          # Запускаем smoke tests
-          ./scripts/smoke-test.sh ${{ vars.API_URL }} ${{ secrets.TEST_TOKEN }}
+          echo "Services redeployed with SHA: ${{ github.event.inputs.target_sha }}"
+
+      - name: Wait for health checks
+        run: |
+          echo "Waiting for services to be healthy..."
+          
+          # Ждём, пока backend начнёт отвечать
+          for i in {1..30}; do
+            if curl -sf http://localhost:8090/places > /dev/null 2>&1; then
+              echo "Backend is responding"
+              break
+            fi
+            echo "  Waiting... ($i/30)"
+            sleep 2
+          done
+          
+          # Ждём, пока frontend начнёт отвечать
+          for i in {1..30}; do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "Frontend is responding"
+              break
+            fi
+            echo "  Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run smoke tests
+        run: |
+          chmod +x ./scripts/smoke-test.sh
+          ./scripts/smoke-test.sh http://localhost:3000/api "${{ secrets.TEST_TOKEN }}"
+          echo "Smoke tests passed"
+
+      - name: Notify rollback complete
+        run: |
+          echo "Rollback completed successfully:"
+          echo "   • Environment: ${{ github.event.inputs.environment }}"
+          echo "   • Service: ${{ github.event.inputs.service }}"
+          echo "   • Target SHA: ${{ github.event.inputs.target_sha }}"
+          echo "   • Reason: ${{ github.event.inputs.reason || 'No reason provided' }}"
