@@ -55,7 +55,11 @@ func main() {
 	case ModeServer:
 		runServer(context.Background(), cfg, logger)
 	case ModeMigrate:
-		runMigrations(cfg, logger, *migrateUp, *migrateSteps)
+		if err := runMigrations(cfg, logger, *migrateUp, *migrateSteps); err != nil {
+			logger.Error("migration failed", "error", err.Error())
+			os.Exit(1)
+		}
+		logger.Info("migrations applied successfully")
 	case ModeCreateAdmin:
 		createAdminUser(cfg, logger, *adminEmail, *adminName, *adminPassword)
 	case ModeClearCache:
@@ -79,46 +83,69 @@ func runServer(ctx context.Context, cfg config.Config, logger *slog.Logger) {
 	app.Run(ctx, cfg, logger, rdb)
 }
 
-func runMigrations(cfg config.Config, logger *slog.Logger, up bool, steps int) {
+func runMigrations(cfg config.Config, logger *slog.Logger, up bool, steps int) error {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		cfg.Database.User, cfg.Database.Password,
 		cfg.Database.Host, cfg.Database.Port, cfg.Database.Name,
 	)
 
-	m, err := migrate.New(
-		"file:///app/migrations",
-		dsn,
-	)
+	m, err := migrate.New("file:///app/migrations", dsn)
 	if err != nil {
-		logger.Error("init migrate: " + err.Error())
-		os.Exit(1)
+		return fmt.Errorf("init migrate: %w", err)
 	}
 	defer m.Close()
 
+	// 🔍 Получаем текущую версию
+	currentVersion, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return fmt.Errorf("get current version: %w", err)
+	}
+	if dirty {
+		logger.Warn("database is in dirty state, manual intervention may be required")
+	}
+	logger.Info("migration start", "current_version", currentVersion, "dirty", dirty)
+
+	// ⬆️ Применяем миграции
 	if up {
 		if steps > 0 {
 			err = m.Steps(steps)
 		} else {
 			err = m.Up()
 		}
-		if err != nil && err != migrate.ErrNoChange {
-			logger.Error("migration up: " + err.Error())
-			os.Exit(1)
-		}
-		logger.Info("migrations applied successfully")
 	} else {
 		if steps > 0 {
 			err = m.Steps(-steps)
 		} else {
 			err = m.Down()
 		}
-		if err != nil && err != migrate.ErrNoChange {
-			logger.Error("migration down: " + err.Error())
-			os.Exit(1)
-		}
-		logger.Info("migrations reverted successfully")
 	}
+
+	// ⚠️ ErrNoChange - штатная ситуация, когда миграции уже применены
+	if err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+
+	// 🔍 Получаем новую версию
+	newVersion, newDirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return fmt.Errorf("get new version: %w", err)
+	}
+
+	logger.Info("migration complete",
+		"from_version", currentVersion,
+		"to_version", newVersion,
+		"direction", map[bool]string{true: "up", false: "down"}[up],
+		"dirty", newDirty,
+	)
+
+	// 📤 Выводим версию в stdout для захвата в CI/CD
+	// 0 означает, что миграции ещё не применялись (или были откачены полностью)
+	if newVersion > 0 {
+		fmt.Printf("MIGRATION_VERSION=%d\n", newVersion)
+	}
+
+	return nil
 }
 
 func createAdminUser(cfg config.Config, logger *slog.Logger, email, name, password string) {

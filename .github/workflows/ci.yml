@@ -64,53 +64,97 @@ jobs:
             COMMIT_SHA=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
-  migrate:
+  build-migration:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    environment: ${{ github.event.inputs.environment }}
-    
-    # 👇 Поднимаем временную БД для этого шага
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    permissions:
+      contents: read
+      packages: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set lowercase image name
-        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Build & Push migration image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.migrate
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/migrations:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/migrations:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Run migrations
+  release:
+    needs: [build, build-migration]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    outputs:
+      release_id: ${{ steps.create-release.outputs.id }}
+      migration_version: ${{ steps.migrate.outputs.version }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run migrations (release stage)
+        id: migrate
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
         run: |
-          docker run --rm \
-            --network host \
-            -e DB_HOST=localhost \
-            -e DB_PORT=5432 \
-            -e DB_USER=postgres \
-            -e DB_PASSWORD=postgres \
-            -e DB_NAME=postgres \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/backend:${{ github.sha }} \
-            ./main -mode=migrate
+          # Запускаем миграции в изолированном контейнере
+          MIGRATION_VERSION=$(docker run --rm \
+            -e DB_HOST=$DB_HOST \
+            -e DB_PORT=$DB_PORT \
+            -e DB_USER=$DB_USER \
+            -e DB_PASSWORD=$DB_PASSWORD \
+            -e DB_NAME=$DB_NAME \
+            ghcr.io/${{ github.repository }}/migrations:${{ github.sha }} \
+            /migrate -mode=migrate 2>&1 | grep "current version" | awk '{print $NF}')
+          
+          echo "version=$MIGRATION_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Migrations applied, version: $MIGRATION_VERSION"
+
+      - name: Generate release manifest
+        id: create-release
+        run: |
+          cat > release-manifest.json << EOF
+          {
+            "release_id": "${{ github.sha }}-$(date +%s)",
+            "git_sha": "${{ github.sha }}",
+            "environment": "${{ github.event.inputs.environment }}",
+            "migration_version": "${{ steps.migrate.outputs.version }}",
+            "images": {
+              "backend": "ghcr.io/${{ github.repository }}/backend:${{ github.sha }}",
+              "frontend": "ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}",
+              "migrations": "ghcr.io/${{ github.repository }}/migrations:${{ github.sha }}"
+            },
+            "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          echo "manifest=release-manifest.json" >> $GITHUB_OUTPUT
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: release-manifest.json
+          retention-days: 30
 
   deploy:
-      needs: [build, migrate]
+      needs: [build, build-migration]
       runs-on: ubuntu-latest
       if: github.event_name == 'workflow_dispatch'
       environment: ${{ github.event.inputs.environment }}
