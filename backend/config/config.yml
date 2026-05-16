@@ -9,7 +9,6 @@ database:
   timeout: 1s
 
 http_server:
-  jwt-secret: "replace-with-secure-secret"
   timeout: 5s
   port: "8090"
 
