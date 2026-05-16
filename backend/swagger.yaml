@@ -43,7 +43,7 @@ components:
           example: "ул. Спортивная, 15"
         description:
           type: string
-          example: "Крытая площадка с профессиональным покрытием"
+          example: "Крытая парковка"
         image:
           type: string
           example: "https://example.com/image.jpg"
