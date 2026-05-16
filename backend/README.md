@@ -1,4 +1,4 @@
-# Backend for Sports Places Booking (Go)
+# Backend for Parking Booking (Go)
 
 This is a minimal backend implementing places, time slots and bookings.
 Tech: Go, PostgreSQL, chi router.
