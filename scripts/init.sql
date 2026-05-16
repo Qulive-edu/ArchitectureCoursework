@@ -1,4 +1,4 @@
--- 1. Площадки (залы, корты, поля)
+-- 1. Паркровки
 CREATE TABLE places (
     id SERIAL PRIMARY KEY,
     title VARCHAR(127) NOT NULL,
