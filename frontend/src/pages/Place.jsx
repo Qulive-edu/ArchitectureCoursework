@@ -10,13 +10,13 @@ export default function Place() {
   const placeId = Number(id);
 
   const [place, setPlace] = useState(null);
-  const [slots, setSlots] = useState([]); // по умолчанию — пустой массив
+  const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!placeId || isNaN(placeId)) {
-      setError("Неверный ID площадки");
+      setError("Неверный ID парковки");
       setLoading(false);
       return;
     }
@@ -31,7 +31,7 @@ export default function Place() {
         setPlace(placeRes.data);
         setSlots(Array.isArray(slotsRes.data) ? slotsRes.data : []);
       } catch (err) {
-        console.error("Ошибка загрузки площадки или слотов:", err);
+        console.error("Ошибка загрузки парковки или слотов:", err);
         setError("Не удалось загрузить данные");
       } finally {
         setLoading(false);
@@ -52,7 +52,7 @@ export default function Place() {
 
   if (loading) return <div className="py-10 text-center">Загрузка...</div>;
   if (error) return <div className="py-10 text-center text-red-400">Ошибка: {error}</div>;
-  if (!place) return <div className="py-10 text-center">Площадка не найдена</div>;
+  if (!place) return <div className="py-10 text-center">Парковка не найдена</div>;
 
   return (
     <div className="max-w-3xl mx-auto py-10">

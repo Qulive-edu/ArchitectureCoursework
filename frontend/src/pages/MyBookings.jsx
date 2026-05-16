@@ -15,7 +15,7 @@ export default function MyBookings() {
       {list.map((b) => (
         <div key={b.id} className="bg-zinc-800 p-4 rounded-xl mb-4">
           <p><strong>Бронь #{b.id}</strong></p>
-          <p>Площадка: {b.place_id}</p>
+          <p>Парковка: {b.place_id}</p>
           <p>Слот: {b.slot_id}</p>
           <p className="text-zinc-400">{new Date(b.created_at).toLocaleString()}</p>
         </div>
