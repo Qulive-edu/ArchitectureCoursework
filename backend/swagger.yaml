@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Sports Places Booking API
-  description: API для бронирования спортивных площадок
+  title: Parking Booking API
+  description: API для бронирования парковочных мест
   version: 1.0.0
   contact:
     name: API Support
@@ -16,7 +16,7 @@ tags:
   - name: Authentication
     description: Регистрация и авторизация пользователей
   - name: Places
-    description: Управление спортивными площадками
+    description: Управление парковками
   - name: Slots
     description: Управление временными слотами
   - name: Bookings
@@ -30,7 +30,6 @@ components:
         - id
         - title
         - address
-        - floor_type
         - price_per_hour
       properties:
         id:
@@ -38,13 +37,10 @@ components:
           example: 1
         title:
           type: string
-          example: "Баскетбольная площадка #1"
+          example: "Парковочная площадка #1"
         address:
           type: string
           example: "ул. Спортивная, 15"
-        floor_type:
-          type: string
-          example: "паркет"
         description:
           type: string
           example: "Крытая площадка с профессиональным покрытием"
@@ -264,11 +260,11 @@ paths:
     get:
       tags:
         - Places
-      summary: Получить список всех площадок
-      description: Возвращает список всех доступных спортивных площадок
+      summary: Получить список всех парковок
+      description: Возвращает список всех доступных парковок
       responses:
         '200':
-          description: Список площадок
+          description: Список парковок
           content:
             application/json:
               schema:
@@ -286,23 +282,23 @@ paths:
     get:
       tags:
         - Places
-      summary: Получить информацию о конкретной площадке
+      summary: Получить информацию о конкретной парковке
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: ID площадки
+          description: ID парковки
       responses:
         '200':
-          description: Информация о площадке
+          description: Информация о парковке
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Place'
         '404':
-          description: Площадка не найдена
+          description: парковка не найдена
           content:
             application/json:
               schema:
@@ -318,15 +314,15 @@ paths:
     get:
       tags:
         - Slots
-      summary: Получить доступные слоты для площадки
-      description: Возвращает список доступных временных слотов для указанной площадки
+      summary: Получить доступные слоты для парковки
+      description: Возвращает список доступных временных слотов для указанной парковки
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: ID площадки
+          description: ID парковки
       responses:
         '200':
           description: Список слотов
@@ -337,7 +333,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Slot'
         '404':
-          description: Площадка не найдена
+          description: парковка не найдена
           content:
             application/json:
               schema:

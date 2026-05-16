@@ -22,7 +22,7 @@ func NewBookingHandler(r *chi.Mux, svc usecase.BookingService, log *slog.Logger,
 }
 
 func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
-	// 💡 ВРЕМЕННО: фиксированный ID демо-пользователя
+	// ВРЕМЕННО: фиксированный ID демо-пользователя
 	userID := 1
 
 	var req struct {
@@ -45,7 +45,7 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BookingHandler) GetMine(w http.ResponseWriter, r *http.Request) {
-	// 💡 ВРЕМЕННО: фиксированный ID демо-пользователя
+	// ВРЕМЕННО: фиксированный ID демо-пользователя
 	userID := 1
 
 	bs, err := h.svc.ListMyBookings(r.Context(), userID)

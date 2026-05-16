@@ -21,8 +21,8 @@ import (
 
 func NewRouter(ctx context.Context, cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService, rdb *redispkg.Client) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(chimiddleware.RequestID)             // Генерирует request_id
-	r.Use(middleware.StructuredLogger(logger)) // 👈 Наш новый логгер
+	r.Use(chimiddleware.RequestID) // Генерирует request_id
+	r.Use(middleware.StructuredLogger(logger))
 	r.Use(middleware.GracefulShutdownMiddleware(ctx, logger))
 
 	// CORS
