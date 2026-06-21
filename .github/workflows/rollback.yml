@@ -84,8 +84,7 @@ jobs:
       - name: Wait for health checks
         run: |
           echo "Waiting for services to be healthy..."
-          
-          # Ждём, пока backend начнёт отвечать
+
           for i in {1..30}; do
             if curl -sf http://localhost:8090/places > /dev/null 2>&1; then
               echo "Backend is responding"
@@ -94,8 +93,7 @@ jobs:
             echo "  Waiting... ($i/30)"
             sleep 2
           done
-          
-          # Ждём, пока frontend начнёт отвечать
+
           for i in {1..30}; do
             if curl -sf http://localhost:3000 > /dev/null 2>&1; then
               echo "Frontend is responding"

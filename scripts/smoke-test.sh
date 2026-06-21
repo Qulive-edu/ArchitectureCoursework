@@ -26,7 +26,6 @@ RESP=$(curl -sf --max-time 10 -X POST "$BASE_URL/auth/register" \
   -d "{\"name\":\"Test\",\"email\":\"test$(date +%s)@example.com\",\"password\":\"pass123\"}" 2>&1)
 if [[ -n "$RESP" ]] && echo "$RESP" | grep -q '"token"'; then
     echo "OK"
-    # Сохраняем токен для следующих запросов
     TOKEN=$(echo "$RESP" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 else
     echo "FAIL"

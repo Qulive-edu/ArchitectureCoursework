@@ -16,7 +16,6 @@ const (
 	UserIDKey contextKey = "user_id"
 )
 
-// JWTWithBlacklist — middleware для валидации JWT с проверкой блеклиста в Redis
 func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,14 +44,12 @@ func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Han
 				return
 			}
 
-			// Приводим к конкретному типу для работы с методами
 			jwtToken, ok := token.(jwt.Token)
 			if !ok {
 				http.Error(w, `{"error": "invalid token format"}`, http.StatusUnauthorized)
 				return
 			}
 
-			// Извлекаем user_id
 			userIDRaw, ok := jwtToken.Get("user_id")
 			if !ok {
 				http.Error(w, `{"error": "invalid token claims: missing user_id"}`, http.StatusUnauthorized)
@@ -72,24 +69,20 @@ func JWTWithBlacklist(jwtAuth *jwtauth.JWTAuth, rdb *redis.Client) func(http.Han
 				return
 			}
 
-			// 5. Добавляем данные в контекст запроса
 			ctx := context.WithValue(r.Context(), ClaimsKey, jwtToken)
 			ctx = context.WithValue(ctx, UserIDKey, userID)
 			r = r.WithContext(ctx)
 
-			// 6. Передаём управление дальше
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// GetClaimsFromContext — хелпер для получения токена/claims в хендлерах
 func GetTokenFromContext(r *http.Request) (jwt.Token, bool) {
 	token, ok := r.Context().Value(ClaimsKey).(jwt.Token)
 	return token, ok
 }
 
-// GetUserIDFromContext — хелпер для получения user_id в хендлерах
 func GetUserIDFromContext(r *http.Request) (int, bool) {
 	userID, ok := r.Context().Value(UserIDKey).(int)
 	return userID, ok
