@@ -21,11 +21,10 @@ import (
 
 func NewRouter(ctx context.Context, cfg config.Server, logger *slog.Logger, placeSvc usecase.PlaceService, bookingSvc usecase.BookingService, userSvc usecase.UserService, rdb *redispkg.Client) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(chimiddleware.RequestID) // Генерирует request_id
+	r.Use(chimiddleware.RequestID)
 	r.Use(middleware.StructuredLogger(logger))
 	r.Use(middleware.GracefulShutdownMiddleware(ctx, logger))
 
-	// CORS
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:     []string{"*"},
 		AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -34,7 +33,6 @@ func NewRouter(ctx context.Context, cfg config.Server, logger *slog.Logger, plac
 		OptionsPassthrough: true,
 	}))
 
-	// Swagger документация
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "swagger-ui.html")
 	})
@@ -51,7 +49,6 @@ func NewRouter(ctx context.Context, cfg config.Server, logger *slog.Logger, plac
 
 	jwt := jwtauth.New("HS256", []byte(cfg.JwtSecret), nil)
 
-	// Регистрация обработчиков
 	handlers.NewPlaceHandler(r, placeSvc, logger)
 	handlers.NewSlotHandler(r, placeSvc, logger)
 	handlers.NewAuthHandler(r, userSvc, logger, jwt, rdb)

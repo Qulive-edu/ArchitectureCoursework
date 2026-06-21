@@ -20,7 +20,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(r *chi.Mux, svc usecase.UserService, log *slog.Logger, jwt *jwtauth.JWTAuth, rdb *redis.Client) *AuthHandler {
-	h := &AuthHandler{svc: svc, log: log, jwt: jwt, rdb: rdb} // 👈 Сохраняем rdb
+	h := &AuthHandler{svc: svc, log: log, jwt: jwt, rdb: rdb}
 
 	r.Post("/auth/register", h.Register)
 	r.Post("/auth/login", h.Login)
@@ -70,15 +70,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	// 1. Берём токен из заголовка
 	tokenStr := jwtauth.TokenFromHeader(r)
 	if tokenStr == "" {
 		http.Error(w, `{"error": "missing token"}`, http.StatusUnauthorized)
 		return
 	}
 
-	// 2. Добавляем в блеклист Redis
-	// TTL: 24 часа (в продакшене можно парсить `exp` из JWT и ставить точное время)
 	err := h.rdb.Set(r.Context(), "blacklist:"+tokenStr, "1", 24*time.Hour).Err()
 	if err != nil {
 		h.log.Error("redis blacklist error: " + err.Error())
